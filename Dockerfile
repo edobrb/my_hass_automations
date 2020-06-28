@@ -19,3 +19,7 @@ RUN \
   git clone https://github.com/edobrb/my_hass_automations.git && \
   cd my_hass_automations && \
   echo $HASS_TOKEN > jwt.txt
+
+CMD \
+  cd my_hass_automations && \
+  sbt run
