@@ -9,7 +9,7 @@ object Automation extends App {
 
   val HASS_URI = "192.168.1.10:8123"
   val source = scala.io.Source.fromFile("jwt.txt")
-  val token = source.mkString
+  val token = source.mkString.filter(_ != '\n')
   source.close()
   implicit val hass: Hass = Hass(HASS_URI, token)
 

@@ -14,9 +14,8 @@ RUN \
   rm sbt-$SBT_VERSION.deb && \
   apt-get update && \
   apt-get install sbt && \
-  sbt sbtVersion
-  apt-get install git
-  git clone https://github.com/edobrb/my_hass_automations.git
-  cd my_hass_automations
+  sbt sbtVersion && \
+  apt-get install git && \
+  git clone https://github.com/edobrb/my_hass_automations.git && \
+  cd my_hass_automations && \
   echo $HASS_TOKEN > jwt.txt
-  sbt run
