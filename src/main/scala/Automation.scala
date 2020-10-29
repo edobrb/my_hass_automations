@@ -24,7 +24,7 @@ object Automation extends App {
   val ciclo_pozzo_dietro = InputBoolean()
   val ciclo_pozzo_motore = InputBoolean()
 
-  val motore_pozzo = Switch("lampada_edo")
+  val motore_pozzo = Switch()
   val irr_davanti = Switch()
   val irr_lato = Switch()
   val irr_dietro = Switch()
@@ -41,6 +41,13 @@ object Automation extends App {
   val irrigazione_sabato = InputBoolean()
   val irrigazione_venerdi = InputBoolean()
   val irrigazione_domenica = InputBoolean()
+
+  val irrigazione_pozzo = InputBoolean()
+  val irrigazione_goccia = InputBoolean()
+  val irrigazione_davanti = InputBoolean()
+  val irrigazione_lato = InputBoolean()
+  val irrigazione_dietro = InputBoolean()
+
   val DEFAULT_TIME_PER_IRRIGATION = 600.seconds
   val MOTOR_START_TIME = 30.seconds
 
@@ -119,6 +126,7 @@ object Automation extends App {
   }
 
 
+  var day = -1
   def checkAutomaticIrrigation(): Unit = {
     val isToday = DateTime.now.getDayOfWeek match {
       case DateTimeConstants.MONDAY => irrigazione_lunedi.value.contains(On)
@@ -130,19 +138,28 @@ object Automation extends App {
       case DateTimeConstants.SUNDAY => irrigazione_domenica.value.contains(On)
     }
 
-    val time = irrigazione_inizio.value match {
-      case Some(time: Time) => time.toJoda
-      case _ => LocalTime.MIDNIGHT
+    if (isToday) {
+
+      val time = irrigazione_inizio.value match {
+        case Some(time: Time) => time.toJoda
+        case _ => LocalTime.MIDNIGHT
+      }
+
+      val timeNow = hass.stateOf[String, SensorState]("sensor.time").map(_.value).getOrElse("00:00")
+      val hourNow = timeNow.split(':')(0).toInt
+      val minuteNow = timeNow.split(':')(1).toInt
+      if(time.getHourOfDay == hourNow && time.getMinuteOfHour == minuteNow && day != DateTime.now.getDayOfYear) {
+        day = DateTime.now.getDayOfYear
+        Seq(irrigazione_pozzo, irrigazione_goccia, irrigazione_davanti, irrigazione_lato, irrigazione_dietro).
+          map(_.value.contains(On))
+          .zip(Seq(ciclo_pozzo_motore, ciclo_pozzo_goccia, ciclo_pozzo_davanti, ciclo_pozzo_lato, ciclo_pozzo_dietro))
+          .filter(_._1).map(_._2).foreach(_.turnOn())
+      }
+
+
+
     }
 
-    val isNow = LocalTime.now > time && time.plusMillis(timePerCycleIrrigation.toMillis.toInt * 3) > LocalTime.now
-
-    if (isToday && isNow) {
-      //ciclo_pozzo_goccia.turnOn()
-      ciclo_pozzo_davanti.turnOn()
-      ciclo_pozzo_lato.turnOn()
-      ciclo_pozzo_dietro.turnOn()
-    }
   }
 
   hass.onStateChange {
@@ -150,6 +167,12 @@ object Automation extends App {
       checkAutomaticIrrigation()
   }
 
+
+  Seq(irrigazione_pozzo, irrigazione_goccia, irrigazione_davanti, irrigazione_lato, irrigazione_dietro).foreach {
+    i => i.onState {
+      case (_, _, _) => day = -1
+    }
+  }
 
   //DEBUG
   irrigazione_inizio.onState {
