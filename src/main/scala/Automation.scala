@@ -21,7 +21,7 @@ object Automation extends App {
   def log(s: String): Unit = hass.log.inf(s)
   Pozzo.run(hass)
 
-  val sun = Sun()
+  /*val sun = Sun()
   val time = Sensor()
   val frontDoorLight = Switch("luce_fuori_porta_davanti")
   val frontLights = Switch("luce_fuori_davanti")
@@ -70,6 +70,6 @@ object Automation extends App {
     case 4 =>
       log("Dawn. turning off al lights...")
       allOutdoorLights.turnOff()
-  })
+  })*/
 
 }
