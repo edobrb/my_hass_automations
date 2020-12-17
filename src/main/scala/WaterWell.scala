@@ -3,13 +3,13 @@ import hass.controller.{Channel, Hass}
 import hass.model.entity.{InputBoolean, InputDateTime, Switch}
 import hass.model.state.SensorState
 import hass.model.state.ground.{Off, On, Time}
-import Automation.hass
 import org.joda.time.{DateTime, DateTimeConstants}
 import scala.concurrent.duration._
 import scala.concurrent.duration.FiniteDuration
 
-object Pozzo {
-  def run(implicit hass: Hass): Unit = {
+case class WaterWell(hass: Hass) extends Automation {
+  def run(): Unit = {
+    implicit val implicitHass: Hass = hass
     val startTime = DateTime.now()
 
     val ciclo_pozzo_goccia = InputBoolean()
