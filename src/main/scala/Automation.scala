@@ -13,8 +13,7 @@ object Automation extends App {
   val token = source.mkString.filter(_ != '\n')
   source.close()
 
-  implicit val hass: Hass = Hass(HASS_URI, token)
-
+  val hass: Hass = Hass(HASS_URI, token)
   WaterWell(hass).run()
   Conditioner(hass).run()
 }
