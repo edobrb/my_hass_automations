@@ -43,8 +43,8 @@ case class WaterWell(hass: Hass) extends Automation {
     val irrigazione_dietro = InputBoolean()
 
     val DEFAULT_TIME_PER_IRRIGATION = 600.seconds
-    val MOTOR_START_TIME = 60.seconds
-    val SWITCH_DELAY = 800.millisecond
+    val MOTOR_START_TIME = 180.seconds
+    val SWITCH_DELAY = 1000.millisecond
 
     def log(s: String): Unit = hass.log.inf(s)
 
