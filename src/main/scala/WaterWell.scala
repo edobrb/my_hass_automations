@@ -43,7 +43,8 @@ case class WaterWell(hass: Hass) extends Automation {
     val irrigazione_dietro = InputBoolean()
 
     val DEFAULT_TIME_PER_IRRIGATION = 600.seconds
-    val MOTOR_START_TIME = 30.seconds
+    val MOTOR_START_TIME = 60.seconds
+    val SWITCH_DELAY = 800.millisecond
 
     def log(s: String): Unit = hass.log.inf(s)
 
@@ -113,7 +114,7 @@ case class WaterWell(hass: Hass) extends Automation {
       }
 
       Channel(sw.entityId).onSignal(c => {
-        case On => c.signal("OnReal", 2.seconds); log(sw.entityName + " On in 2 seconds.")
+        case On => c.signal("OnReal", SWITCH_DELAY); log(sw.entityName + " On in 2 seconds.")
         case "OnReal" => sw.turnOn(); log(sw.entityName + " On!")
         case Off => c.reset(); sw.turnOff(); log(sw.entityName + " Off!")
       })
