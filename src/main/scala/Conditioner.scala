@@ -15,6 +15,7 @@ case class Conditioner(hass: Hass) extends Automation {
     val consumo_totale = Sensor()
     val edo_stanza_temperature = Sensor()
     val turn_on_conditioner_31_c = Script()
+    val turn_on_conditioner_16_c = Script()
     val turn_off_conditioner = Script()
     val automate_conditioner = InputBoolean()
     val conditioner_state = InputBoolean()
@@ -28,6 +29,7 @@ case class Conditioner(hass: Hass) extends Automation {
     })
 
     var lastAction = DateTime.now().minusHours(1)
+    var job = "NONE"
 
     def t: FiniteDuration = Duration.apply(DateTime.now().getMillis - lastAction.getMillis, TimeUnit.MILLISECONDS)
 
@@ -59,7 +61,10 @@ case class Conditioner(hass: Hass) extends Automation {
           if (state == Off && power > 900 && temp < 19 && canAutomate) {
             commands.signal(("on hot", power, temp))
           }
-          if (state == On && (power < -300 || temp > 21)) {
+          if (state == Off && power > 900 && temp > 24 && canAutomate) {
+            commands.signal(("on cold", power, temp))
+          }
+          if (state == On && (power < -200 || (temp > 21 && job == "HOT") || (temp < 21 && job == "COLD"))) {
             commands.signal(("off", power, temp))
           }
         }
@@ -70,10 +75,17 @@ case class Conditioner(hass: Hass) extends Automation {
         log(s"Turning on conditioner to hot ($power W / $temp °C)")
         turn_on_conditioner_31_c.trigger()
         lastAction = DateTime.now()
+        job = "HOT"
+      case ("on cold", power, temp) if t > 5.minutes =>
+        log(s"Turning on conditioner to cold ($power W / $temp °C)")
+        turn_on_conditioner_16_c.trigger()
+        lastAction = DateTime.now()
+        job = "COLD"
       case ("off", power, temp) if t > 5.minutes =>
         log(s"Turning off ($power W / $temp °C)")
         turn_off_conditioner.trigger()
         lastAction = DateTime.now()
+        job = "NONE"
       case v => log(s"Ignored $v")
     })
   }
