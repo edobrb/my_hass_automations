@@ -49,6 +49,9 @@ case class Conditioner(hass: Hass) extends Automation {
     turn_on_conditioner_31_c.onValue {
       case (_, On) => conditioner_state.turnOn()
     }
+    turn_on_conditioner_16_c_fast.onValue {
+      case (_, On) => conditioner_state.turnOn()
+    }
     turn_off_conditioner.onValue {
       case (_, On) => conditioner_state.turnOff()
     }
@@ -64,7 +67,6 @@ case class Conditioner(hass: Hass) extends Automation {
            temp <- edo_stanza_temperature.numericValue)
         yield {
           val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0 && DateTime.now().toLocalTime.compareTo(beforeTime.toJoda) < 0
-          log(s"$canAutomate, $power, $temp")
           if(canAutomate) {
             /*if (state == Off && power > 900 && temp < 19) {
               commands.signal(("hot", power, temp))
