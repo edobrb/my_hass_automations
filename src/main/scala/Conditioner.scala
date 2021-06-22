@@ -1,7 +1,7 @@
 import java.util.concurrent.TimeUnit
-
 import hass.controller.{Channel, Hass}
 import _root_.hass.model.entity.{InputBoolean, InputDateTime, Script, Sensor}
+import hass.model.state.SensorState
 import hass.model.state.ground.{Off, On, Time, TimeOrDate}
 import org.joda.time.DateTime
 import scalaz.concurrent.Task.Try
@@ -22,6 +22,7 @@ case class Conditioner(hass: Hass) extends Automation {
     val conditioner_state = InputBoolean()
     val automate_conditioner_after = InputDateTime()
     val automate_conditioner_before = InputDateTime()
+    val time = Sensor()
 
     val commands = Channel("commands")
 
@@ -66,10 +67,17 @@ case class Conditioner(hass: Hass) extends Automation {
            before <- automate_conditioner_before.value;
            beforeTime <- Try(before.asInstanceOf[Time]).toOption;
            power <- consumo_totale.numericValue;
-           temp <- edo_stanza_temperature.numericValue)
+           temp <- edo_stanza_temperature.numericValue;
+           now <- time.value)
         yield {
           temp_history = (temp_history :+ temp).takeRight(600)
-          val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0 && DateTime.now().toLocalTime.compareTo(beforeTime.toJoda) < 0
+          val canAutomate = Try {
+            val nowValue = now.split(':')(0).toInt * 60 + now.split(':')(1).toInt
+            val beforeValue = beforeTime.h * 60 + beforeTime.m
+            val afterValue = afterTime.h * 60 + afterTime.m
+            nowValue > afterValue && nowValue < beforeValue
+          }.getOrElse(false)
+
           if(canAutomate) {
             if (state == Off && power > 900 && temp < 19) {
               commands.signal(("hot", power, temp))
