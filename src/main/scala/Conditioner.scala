@@ -68,13 +68,13 @@ case class Conditioner(hass: Hass) extends Automation {
         yield {
           val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0 && DateTime.now().toLocalTime.compareTo(beforeTime.toJoda) < 0
           if(canAutomate) {
-            /*if (state == Off && power > 900 && temp < 19) {
+            if (state == Off && power > 900 && temp < 19) {
               commands.signal(("hot", power, temp))
-            }*/
-            if (state == Off && goCold.value.getOrElse(Off) == On /*&& power > 900 && temp >= 25*/ ) {
+            }
+            if (state == Off &&  power > 900 && temp >= 25 ) {
               commands.signal(("cold", power, temp))
             }
-            if (state == On && job != "COOLING_OFF" && goCold.value.getOrElse(Off) == Off /*&& (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD"))*/ ) {
+            if (state == On && job != "COOLING_OFF" && (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD")) ) {
               commands.signal("cool_off")
             }
           } else if(state == On) {
@@ -104,7 +104,7 @@ case class Conditioner(hass: Hass) extends Automation {
         turn_on_conditioner_only_fan.trigger()
         job = "COOLING_OFF"
         commands.signal(("off", 0, 0), 1.minutes)
-      case v => log(s"Ignored $v")
+      case v => //log(s"Ignored $v")
     })
   }
 }
