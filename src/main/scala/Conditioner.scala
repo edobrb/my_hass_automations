@@ -14,8 +14,8 @@ case class Conditioner(hass: Hass) extends Automation {
     implicit val implicitHass: Hass = hass
     val consumo_totale = Sensor()
     val edo_stanza_temperature = Sensor()
-    val turn_on_conditioner_31_c = Script()
-    val turn_on_conditioner_16_c_fast = Script()
+    val turn_on_conditioner_31_c = Script("turn_off_conditioner")
+    val turn_on_conditioner_16_c_fast = Script("turn_off_conditioner")
     val turn_on_conditioner_only_fan = Script()
     val turn_off_conditioner = Script()
     val automate_conditioner = InputBoolean()
@@ -64,6 +64,7 @@ case class Conditioner(hass: Hass) extends Automation {
            temp <- edo_stanza_temperature.numericValue)
         yield {
           val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0 && DateTime.now().toLocalTime.compareTo(beforeTime.toJoda) < 0
+          log(s"$canAutomate, $power, $temp")
           if(canAutomate) {
             /*if (state == Off && power > 900 && temp < 19) {
               commands.signal(("hot", power, temp))
