@@ -14,8 +14,8 @@ case class Conditioner(hass: Hass) extends Automation {
     implicit val implicitHass: Hass = hass
     val consumo_totale = Sensor()
     val edo_stanza_temperature = Sensor()
-    val turn_on_conditioner_31_c = Script("turn_off_conditioner")
-    val turn_on_conditioner_16_c_fast = Script("turn_off_conditioner")
+    val turn_on_conditioner_31_c = Script()
+    val turn_on_conditioner_16_c_fast = Script()
     val turn_on_conditioner_only_fan = Script()
     val turn_off_conditioner = Script()
     val automate_conditioner = InputBoolean()
@@ -74,7 +74,7 @@ case class Conditioner(hass: Hass) extends Automation {
             if (state == Off && goCold.value.getOrElse(Off) == On /*&& power > 900 && temp >= 25*/ ) {
               commands.signal(("cold", power, temp))
             }
-            if (state == On && goCold.value.getOrElse(Off) == Off /*&& (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD"))*/ ) {
+            if (state == On && job != "COOLING_OFF" && goCold.value.getOrElse(Off) == Off /*&& (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD"))*/ ) {
               commands.signal("cool_off")
             }
           } else if(state == On) {
