@@ -16,10 +16,14 @@ case class Conditioner(hass: Hass) extends Automation {
     val edo_stanza_temperature = Sensor()
     val turn_on_conditioner_31_c = Script()
     val turn_on_conditioner_16_c_fast = Script()
+    val turn_on_conditioner_only_fan = Script()
     val turn_off_conditioner = Script()
     val automate_conditioner = InputBoolean()
     val conditioner_state = InputBoolean()
     val automate_conditioner_after = InputDateTime()
+    val automate_conditioner_before = InputDateTime()
+    val goCold = InputBoolean("irrigazione_pozzo")
+
     val commands = Channel("commands")
 
 
@@ -54,38 +58,49 @@ case class Conditioner(hass: Hass) extends Automation {
            state <- conditioner_state.value;
            after <- automate_conditioner_after.value;
            afterTime <- Try(after.asInstanceOf[Time]).toOption;
+           before <- automate_conditioner_before.value;
+           beforeTime <- Try(before.asInstanceOf[Time]).toOption;
            power <- consumo_totale.numericValue;
            temp <- edo_stanza_temperature.numericValue)
         yield {
-          val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0
-          if (state == Off && power > 900 && temp < 19 && canAutomate) {
-            commands.signal(("on hot", power, temp))
-          }
-          if (state == Off && power > 900 && temp > 24 && canAutomate) {
-            commands.signal(("on cold", power, temp))
-          }
-          if (state == On && (power < -200 || (temp > 21 && job == "HOT") || (temp < 21 && job == "COLD"))) {
+          val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0 && DateTime.now().toLocalTime.compareTo(beforeTime.toJoda) < 0
+          if(canAutomate) {
+            /*if (state == Off && power > 900 && temp < 19) {
+              commands.signal(("hot", power, temp))
+            }*/
+            if (state == Off && goCold.value.getOrElse(Off) == On /*&& power > 900 && temp >= 25*/ ) {
+              commands.signal(("cold", power, temp))
+            }
+            if (state == On && goCold.value.getOrElse(Off) == Off /*&& (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD"))*/ ) {
+              commands.signal("cool_off")
+            }
+          } else if(state == On) {
             commands.signal(("off", power, temp))
           }
         }
     }
 
     commands.onSignal(_ => {
-      case ("on hot", power, temp) if t > 5.minutes =>
+      case ("hot", power, temp) if t > 2.minutes =>
         log(s"Turning on conditioner to hot ($power W / $temp °C)")
         turn_on_conditioner_31_c.trigger()
         lastAction = DateTime.now()
         job = "HOT"
-      case ("on cold", power, temp) if t > 5.minutes =>
+      case ("cold", power, temp) if t > 2.minutes =>
         log(s"Turning on conditioner to cold ($power W / $temp °C)")
         turn_on_conditioner_16_c_fast.trigger()
         lastAction = DateTime.now()
         job = "COLD"
-      case ("off", power, temp) if t > 5.minutes =>
+      case ("off", power, temp) =>
         log(s"Turning off ($power W / $temp °C)")
         turn_off_conditioner.trigger()
         lastAction = DateTime.now()
         job = "NONE"
+      case "cool_off" =>
+        log(s"Cooling off")
+        turn_on_conditioner_only_fan.trigger()
+        job = "COOLING_OFF"
+        commands.signal(("off", 0, 0), 1.minutes)
       case v => log(s"Ignored $v")
     })
   }
