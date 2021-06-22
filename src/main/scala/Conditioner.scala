@@ -22,7 +22,6 @@ case class Conditioner(hass: Hass) extends Automation {
     val conditioner_state = InputBoolean()
     val automate_conditioner_after = InputDateTime()
     val automate_conditioner_before = InputDateTime()
-    val goCold = InputBoolean("irrigazione_pozzo")
 
     val commands = Channel("commands")
 
@@ -34,6 +33,9 @@ case class Conditioner(hass: Hass) extends Automation {
 
     var lastAction = DateTime.now().minusHours(1)
     var job = "NONE"
+    var last_job = "NONE"
+    var temp_history:List[Double] = List.empty
+    var maybeStillOn = false
 
     def t: FiniteDuration = Duration.apply(DateTime.now().getMillis - lastAction.getMillis, TimeUnit.MILLISECONDS)
 
@@ -66,6 +68,7 @@ case class Conditioner(hass: Hass) extends Automation {
            power <- consumo_totale.numericValue;
            temp <- edo_stanza_temperature.numericValue)
         yield {
+          temp_history = (temp_history :+ temp).takeRight(600)
           val canAutomate = DateTime.now().toLocalTime.compareTo(afterTime.toJoda) > 0 && DateTime.now().toLocalTime.compareTo(beforeTime.toJoda) < 0
           if(canAutomate) {
             if (state == Off && power > 900 && temp < 19) {
@@ -75,11 +78,19 @@ case class Conditioner(hass: Hass) extends Automation {
               commands.signal(("cold", power, temp))
             }
             if (state == On && job != "COOLING_OFF" && (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD")) ) {
+              maybeStillOn = true
               commands.signal("cool_off")
             }
           } else if(state == On) {
+            maybeStillOn = true
             commands.signal(("off", power, temp))
           }
+
+          if(state == Off && power > 700 && maybeStillOn && (temp_history.last > temp_history.head && last_job == "HOT" || temp_history.last < temp_history.head && last_job == "COLD")) {
+            maybeStillOn = false
+            commands.signal(("repeat_off", 2))
+          }
+
         }
     }
 
@@ -89,11 +100,13 @@ case class Conditioner(hass: Hass) extends Automation {
         turn_on_conditioner_31_c.trigger()
         lastAction = DateTime.now()
         job = "HOT"
+        last_job = "HOT"
       case ("cold", power, temp) if t > 2.minutes =>
         log(s"Turning on conditioner to cold ($power W / $temp °C)")
         turn_on_conditioner_16_c_fast.trigger()
         lastAction = DateTime.now()
         job = "COLD"
+        last_job = "COLD"
       case ("off", power, temp) =>
         log(s"Turning off ($power W / $temp °C)")
         turn_off_conditioner.trigger()
@@ -104,6 +117,10 @@ case class Conditioner(hass: Hass) extends Automation {
         turn_on_conditioner_only_fan.trigger()
         job = "COOLING_OFF"
         commands.signal(("off", 0, 0), 1.minutes)
+      case ("repeat_off", n:Int) if n > 0 =>
+        log(s"MAYBE STILL ON! $n")
+        turn_off_conditioner.trigger()
+        commands.signal(("repeat_off", n - 1), 5.second)
       case v => //log(s"Ignored $v")
     })
   }
