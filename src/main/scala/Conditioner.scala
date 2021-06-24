@@ -87,7 +87,7 @@ case class Conditioner(hass: Hass) extends Automation {
             }
             if (state == On && job != "COOLING_OFF" && (power < -200 || (temp > 21 && job == "HOT") || (temp <= 24 && job == "COLD")) ) {
               maybeStillOn = true
-              commands.signal("cool_off")
+              commands.signal(("cool_off", power, temp))
             }
           } else if(state == On) {
             maybeStillOn = true
@@ -120,8 +120,8 @@ case class Conditioner(hass: Hass) extends Automation {
         turn_off_conditioner.trigger()
         lastAction = DateTime.now()
         job = "NONE"
-      case "cool_off" =>
-        log(s"Cooling off")
+      case ("cool_off", power, temp) =>
+        log(s"Cooling off ($power W / $temp °C)")
         turn_on_conditioner_only_fan.trigger()
         job = "COOLING_OFF"
         commands.signal(("off", 0, 0), 1.minutes)
